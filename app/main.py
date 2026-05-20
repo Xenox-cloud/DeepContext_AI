@@ -14,6 +14,8 @@ from app.core.logging import setup_logging
 from contextlib import asynccontextmanager
 from app.services.embedding_service import EmbeddingService
 from app.api.routes import upload, search, classify, health, documents
+from app.api.routes.sessions import router as session_router
+from app.api.routes.session_documents import router as session_document_router
 
 # Setup logging
 setup_logging()
@@ -53,8 +55,8 @@ app.include_router(search.router, prefix=settings.api_v1_prefix, tags=["search"]
 app.include_router(classify.router, prefix=settings.api_v1_prefix, tags=["classify"])
 app.include_router(documents.router, prefix=settings.api_v1_prefix, tags=["documents"])
 app.include_router(rag.router, prefix=settings.api_v1_prefix, tags=["rag"])
-
-
+app.include_router(session_router, prefix=settings.api_v1_prefix, tags=["sessions"])
+app.include_router(session_document_router, prefix=settings.api_v1_prefix, tags=["session_documents"])
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=False)

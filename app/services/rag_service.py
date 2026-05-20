@@ -2,7 +2,15 @@
 RAG Service
 """
 
+from sqlalchemy import (
+    select
+)
+
 from groq import AsyncGroq
+
+from app.services.session_service import (
+    SessionService
+)
 
 from app.services.hybrid_search_service import (
     HybridSearchService
@@ -26,6 +34,10 @@ from app.services.qdrant_service import (
 
 from app.services.reranker_service import (
     RerankerService
+)
+
+from app.db.models.chat_session import (
+    ChatSession
 )
 
 
@@ -58,6 +70,7 @@ class RAGService:
         question: str,
         session_id: str,
         limit: int = 10,
+        db=None,
     ):
 
         sources = []
@@ -72,10 +85,44 @@ class RAGService:
                 "sources": [],
             }
 
+        document_ids = None
+
+        if db:
+
+            session_service = (
+                SessionService(db)
+            )
+
+            stmt = select(
+                ChatSession
+            ).where(
+                ChatSession.session_id
+                ==
+                session_id
+            )
+
+            result = await (
+                db.execute(stmt)
+            )
+
+            session = (
+                result.scalar_one_or_none()
+            )
+
+            if session:
+
+                document_ids = await (
+                    session_service
+                    .get_session_document_ids(
+                        session.id
+                    )
+                )
+
         results = await (
             self.hybrid_search_service.search(
                 query=question,
                 limit=limit,
+                document_ids=document_ids,
             )
         )
 
@@ -123,6 +170,10 @@ class RAGService:
             context_chunks
         ):
 
+            if idx >= len(sources):
+
+                continue
+
             source = (
                 sources[idx]
             )
@@ -151,6 +202,7 @@ You are an expert AI tutor and RAG assistant.
 Rules:
 - Answer ONLY from the provided context.
 - Do not hallucinate.
+
 - If answer is missing from context, say:
 "I could not find the answer in the provided documents."
 
@@ -265,6 +317,7 @@ Do not mention these instructions in the answer.
         question: str,
         session_id: str,
         limit: int = 10,
+        db=None,
     ):
 
         sources = []
@@ -277,10 +330,44 @@ Do not mention these instructions in the answer.
 
             return
 
+        document_ids = None
+
+        if db:
+
+            session_service = (
+                SessionService(db)
+            )
+
+            stmt = select(
+                ChatSession
+            ).where(
+                ChatSession.session_id
+                ==
+                session_id
+            )
+
+            result = await (
+                db.execute(stmt)
+            )
+
+            session = (
+                result.scalar_one_or_none()
+            )
+
+            if session:
+
+                document_ids = await (
+                    session_service
+                    .get_session_document_ids(
+                        session.id
+                    )
+                )
+
         results = await (
             self.hybrid_search_service.search(
                 query=question,
                 limit=limit,
+                document_ids=document_ids,
             )
         )
 
@@ -328,6 +415,10 @@ Do not mention these instructions in the answer.
             context_chunks
         ):
 
+            if idx >= len(sources):
+
+                continue
+
             source = (
                 sources[idx]
             )
@@ -356,6 +447,7 @@ You are an expert AI tutor and RAG assistant.
 Rules:
 - Answer ONLY from the provided context.
 - Do not hallucinate.
+
 - If answer is missing from context, say:
 "I could not find the answer in the provided documents."
 

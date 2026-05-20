@@ -57,6 +57,7 @@ class HybridSearchService:
         self,
         query: str,
         limit: int = 10,
+        document_ids: list | None = None,
     ):
 
         embedding = (
@@ -82,6 +83,17 @@ class HybridSearchService:
         for point in results.points:
 
             payload = point.payload
+
+            if document_ids:
+
+                if (
+                    payload.get(
+                        "document_id"
+                    )
+                    not in document_ids
+                ):
+
+                    continue
 
             text = payload.get(
                 "text",
@@ -119,4 +131,6 @@ class HybridSearchService:
             reverse=True,
         )
 
-        return hybrid_results[:limit]
+        return hybrid_results[
+            :limit
+        ]
