@@ -15,6 +15,10 @@ from app.api.dependencies import (
     get_db
 )
 
+from app.schemas.session_schema import (
+    SessionResponse
+)
+
 from app.services.session_service import (
     SessionService
 )
@@ -22,16 +26,24 @@ from app.services.session_service import (
 router = APIRouter()
 
 
-@router.post("/sessions/create")
+@router.post(
+    "/sessions/create",
+    response_model=SessionResponse,
+)
 async def create_session(
     title: str = "New Chat",
     db: AsyncSession = Depends(
         get_db
     ),
 ):
+    """
+    Create chat session.
+    """
 
-    service = SessionService(
-        db
+    service = (
+        SessionService(
+            db
+        )
     )
 
     session = await (
@@ -41,9 +53,10 @@ async def create_session(
     )
 
     return {
-        "id": session.id,
         "session_id": (
             session.session_id
         ),
-        "title": session.title,
+        "title": (
+            session.title
+        ),
     }

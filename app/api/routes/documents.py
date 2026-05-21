@@ -1,32 +1,65 @@
 """
 Documents Route
 """
-import os
-from app.db.models.chunk import Chunk
-from fastapi import APIRouter, Depends
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from fastapi import HTTPException
-from app.api.dependencies import get_db
-from app.db.models.document import Document
 
+import os
+
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+)
+
+from sqlalchemy import (
+    select
+)
+
+from sqlalchemy.ext.asyncio import (
+    AsyncSession
+)
+
+from app.api.dependencies import (
+    get_db
+)
+
+from app.db.models.chunk import (
+    Chunk
+)
+
+from app.db.models.document import (
+    Document
+)
+
+from app.schemas.document_schema import (
+    DocumentResponse
+)
 
 router = APIRouter()
 
 
-@router.get("/documents")
+@router.get(
+    "/documents",
+)
 async def list_documents(
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(
+        get_db
+    ),
 ):
     """
     List uploaded documents.
     """
 
-    stmt = select(Document)
+    stmt = select(
+        Document
+    )
 
-    result = await db.execute(stmt)
+    result = await db.execute(
+        stmt
+    )
 
-    documents = result.scalars().all()
+    documents = (
+        result.scalars().all()
+    )
 
     return [
         {
@@ -34,33 +67,42 @@ async def list_documents(
             "filename": (
                 document.original_filename
             ),
+            "original_filename": (
+                document.original_filename
+            ),
             "status": (
                 document.processing_status
-            ),
-            "file_type": (
-                document.file_type
-            ),
-            "uploaded_at": (
-                document.uploaded_at
             ),
         }
         for document in documents
     ]
 
-@router.get("/documents/{document_id}")
+
+@router.get(
+    "/documents/{document_id}",
+    response_model=DocumentResponse,
+)
 async def get_document(
     document_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(
+        get_db
+    ),
 ):
     """
     Get single document.
     """
 
-    stmt = select(Document).where(
-        Document.id == document_id
+    stmt = select(
+        Document
+    ).where(
+        Document.id
+        ==
+        document_id
     )
 
-    result = await db.execute(stmt)
+    result = await db.execute(
+        stmt
+    )
 
     document = (
         result.scalar_one_or_none()
@@ -76,36 +118,41 @@ async def get_document(
     return {
         "id": document.id,
         "filename": (
-            document.original_filename
-        ),
-        "stored_filename": (
             document.filename
         ),
-        "file_type": (
-            document.file_type
+        "original_filename": (
+            document.original_filename
         ),
         "status": (
             document.processing_status
         ),
-        "uploaded_at": (
-            document.uploaded_at
-        ),
     }
 
-@router.get("/documents/{document_id}/chunks")
+
+@router.get(
+    "/documents/{document_id}/chunks",
+)
 async def get_document_chunks(
     document_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(
+        get_db
+    ),
 ):
     """
     Get document chunks.
     """
 
-    stmt = select(Document).where(
-        Document.id == document_id
+    stmt = select(
+        Document
+    ).where(
+        Document.id
+        ==
+        document_id
     )
 
-    result = await db.execute(stmt)
+    result = await db.execute(
+        stmt
+    )
 
     document = (
         result.scalar_one_or_none()
@@ -118,8 +165,12 @@ async def get_document_chunks(
             detail="Document not found",
         )
 
-    chunk_stmt = select(Chunk).where(
-        Chunk.document_id == document_id
+    chunk_stmt = select(
+        Chunk
+    ).where(
+        Chunk.document_id
+        ==
+        document_id
     )
 
     chunk_result = await db.execute(
@@ -143,7 +194,9 @@ async def get_document_chunks(
                 "chunk_index": (
                     chunk.chunk_index
                 ),
-                "text": chunk.text,
+                "text": (
+                    chunk.text
+                ),
                 "qdrant_point_id": (
                     chunk.qdrant_point_id
                 ),
@@ -152,20 +205,31 @@ async def get_document_chunks(
         ],
     }
 
-@router.delete("/documents/{document_id}")
+
+@router.delete(
+    "/documents/{document_id}",
+)
 async def delete_document(
     document_id: int,
-    db: AsyncSession = Depends(get_db),
+    db: AsyncSession = Depends(
+        get_db
+    ),
 ):
     """
     Delete document.
     """
 
-    stmt = select(Document).where(
-        Document.id == document_id
+    stmt = select(
+        Document
+    ).where(
+        Document.id
+        ==
+        document_id
     )
 
-    result = await db.execute(stmt)
+    result = await db.execute(
+        stmt
+    )
 
     document = (
         result.scalar_one_or_none()
@@ -186,7 +250,9 @@ async def delete_document(
             document.file_path
         )
 
-    await db.delete(document)
+    await db.delete(
+        document
+    )
 
     await db.commit()
 
