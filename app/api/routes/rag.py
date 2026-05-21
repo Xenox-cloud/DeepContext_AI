@@ -1,25 +1,45 @@
 """
 RAG Route
 """
-from fastapi.responses import StreamingResponse
+
 import json
-from fastapi import APIRouter
-from pydantic import BaseModel
 
-from app.services.rag_service import RAGService
+from fastapi import (
+    APIRouter
+)
 
+from fastapi.responses import (
+    StreamingResponse
+)
+
+from pydantic import (
+    BaseModel
+)
+
+from app.schemas.rag_schema import (
+    RAGResponse
+)
+
+from app.services.rag_service import (
+    RAGService
+)
 
 router = APIRouter()
 
 
-class AskRequest(BaseModel):
+class AskRequest(
+    BaseModel
+):
 
     question: str
+
     session_id: str
 
 
-
-@router.post("/ask")
+@router.post(
+    "/ask",
+    response_model=RAGResponse,
+)
 async def ask_question(
     request: AskRequest,
 ):
@@ -27,16 +47,23 @@ async def ask_question(
     RAG question answering.
     """
 
-    rag_service = RAGService()
+    rag_service = (
+        RAGService()
+    )
 
-    result = await rag_service.ask(
-        question=request.question,
-        session_id=request.session_id
+    result = await (
+        rag_service.ask(
+            question=request.question,
+            session_id=request.session_id,
+        )
     )
 
     return result
 
-@router.post("/ask/stream")
+
+@router.post(
+    "/ask/stream",
+)
 async def ask_question_stream(
     request: AskRequest,
 ):
@@ -44,21 +71,32 @@ async def ask_question_stream(
     Streaming RAG response.
     """
 
-    rag_service = RAGService()
+    rag_service = (
+        RAGService()
+    )
 
     async def event_generator():
 
         async for chunk in (
             rag_service.ask_stream(
                 question=request.question,
-                session_id=request.session_id
+                session_id=request.session_id,
             )
         ):
 
-            yield chunk
-            
+            yield (
+                json.dumps(
+                    {
+                        "chunk": chunk
+                    }
+                )
+                +
+                "\n"
+            )
 
     return StreamingResponse(
         event_generator(),
-        media_type="text/plain",
+        media_type=(
+            "application/json"
+        ),
     )

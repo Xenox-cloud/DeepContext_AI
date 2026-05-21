@@ -28,6 +28,10 @@ from app.db.models.document import (
     Document
 )
 
+from app.schemas.session_schema import (
+    SessionResponse
+)
+
 from app.services.session_service import (
     SessionService
 )
@@ -36,7 +40,7 @@ router = APIRouter()
 
 
 @router.post(
-    "/sessions/{session_id}/documents/{document_id}"
+    "/sessions/{session_id}/documents/{document_id}",
 )
 async def attach_document_to_session(
     session_id: str,
@@ -45,6 +49,9 @@ async def attach_document_to_session(
         get_db
     ),
 ):
+    """
+    Attach document to session.
+    """
 
     stmt = select(
         ChatSession
@@ -54,8 +61,8 @@ async def attach_document_to_session(
         session_id
     )
 
-    result = await (
-        db.execute(stmt)
+    result = await db.execute(
+        stmt
     )
 
     session = (
@@ -77,8 +84,8 @@ async def attach_document_to_session(
         document_id
     )
 
-    result = await (
-        db.execute(stmt)
+    result = await db.execute(
+        stmt
     )
 
     document = (
@@ -92,19 +99,29 @@ async def attach_document_to_session(
             detail="Document not found",
         )
 
-    service = SessionService(
-        db
+    service = (
+        SessionService(
+            db
+        )
     )
 
     await service.attach_document(
-        session_db_id=session.id,
-        document_id=document.id,
+        session_db_id=(
+            session.id
+        ),
+        document_id=(
+            document.id
+        ),
     )
 
     return {
         "message": (
             "Document attached successfully"
         ),
-        "session_id": session_id,
-        "document_id": document_id,
+        "session_id": (
+            session_id
+        ),
+        "document_id": (
+            document_id
+        ),
     }

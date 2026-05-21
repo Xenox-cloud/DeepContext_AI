@@ -2,26 +2,67 @@
 Search Route
 """
 
-from fastapi import APIRouter, Query, HTTPException, Depends
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from qdrant_client.models import Filter, FieldCondition, MatchValue
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    Query,
+)
 
-from app.api.dependencies import get_db
-from app.db.models.document import Document
-from app.services.embedding_service import EmbeddingService
-from app.services.qdrant_service import QdrantService
+from sqlalchemy import (
+    select
+)
 
+from sqlalchemy.ext.asyncio import (
+    AsyncSession
+)
+
+from qdrant_client.models import (
+    FieldCondition,
+    Filter,
+    MatchValue,
+)
+
+from app.api.dependencies import (
+    get_db
+)
+
+from app.db.models.document import (
+    Document
+)
+
+from app.schemas.search_schema import (
+    SearchResponse
+)
+
+from app.services.embedding_service import (
+    EmbeddingService
+)
+
+from app.services.qdrant_service import (
+    QdrantService
+)
 
 router = APIRouter()
 
 
-@router.get("/search")
+@router.get(
+    "/search",
+    response_model=SearchResponse,
+)
 async def semantic_search(
-    query: str = Query(...),
-    limit: int = Query(5),
-    document_id: int | None = Query(None),
-    db: AsyncSession = Depends(get_db),
+    query: str = Query(
+        ...
+    ),
+    limit: int = Query(
+        5
+    ),
+    document_id: int | None = Query(
+        None
+    ),
+    db: AsyncSession = Depends(
+        get_db
+    ),
 ):
     """
     Semantic vector search.
@@ -34,9 +75,13 @@ async def semantic_search(
             detail="Query cannot be empty",
         )
 
-    embedding_service = EmbeddingService()
+    embedding_service = (
+        EmbeddingService()
+    )
 
-    qdrant_service = QdrantService()
+    qdrant_service = (
+        QdrantService()
+    )
 
     query_embedding = (
         embedding_service.encode(
@@ -48,7 +93,9 @@ async def semantic_search(
 
         raise HTTPException(
             status_code=500,
-            detail="Embedding generation failed",
+            detail=(
+                "Embedding generation failed"
+            ),
         )
 
     search_filter = None
@@ -83,17 +130,27 @@ async def semantic_search(
 
     for point in results.points:
 
-        payload = point.payload
-
-        current_document_id = payload.get(
-            "document_id"
+        payload = (
+            point.payload
         )
 
-        stmt = select(Document).where(
-            Document.id == current_document_id
+        current_document_id = (
+            payload.get(
+                "document_id"
+            )
         )
 
-        result = await db.execute(stmt)
+        stmt = select(
+            Document
+        ).where(
+            Document.id
+            ==
+            current_document_id
+        )
+
+        result = await db.execute(
+            stmt
+        )
 
         document = (
             result.scalar_one_or_none()
@@ -101,28 +158,32 @@ async def semantic_search(
 
         formatted_results.append(
             {
-                "score": point.score,
-                "document": {
-                    "id": (
-                        document.id
-                        if document
-                        else None
-                    ),
-                    "filename": (
-                        document.original_filename
-                        if document
-                        else None
-                    ),
-                },
-                "chunk": {
-                    "text": payload.get(
-                        "text"
-                    ),
-                    "chunk_index": payload.get(
+                "document_id": (
+                    document.id
+                    if document
+                    else None
+                ),
+                "chunk_index": (
+                    payload.get(
                         "chunk_index"
-                    ),
-                },
+                    )
+                ),
+                "text": (
+                    payload.get(
+                        "text"
+                    )
+                ),
+                "score": (
+                    float(
+                        point.score
+                    )
+                ),
             }
         )
 
-    return formatted_results
+    return {
+        "query": query,
+        "results": (
+            formatted_results
+        ),
+    }
