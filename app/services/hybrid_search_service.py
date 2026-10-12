@@ -2,7 +2,13 @@
 Hybrid Search Service
 """
 
-from collections import Counter
+import re
+
+from qdrant_client.models import (
+    FieldCondition,
+    Filter,
+    MatchAny,
+)
 
 from app.services.embedding_service import (
     EmbeddingService
@@ -11,6 +17,20 @@ from app.services.embedding_service import (
 from app.services.qdrant_service import (
     QdrantService
 )
+
+
+VECTOR_WEIGHT = 0.7
+KEYWORD_WEIGHT = 0.3
+
+
+def tokenize(
+    text: str,
+):
+
+    return re.findall(
+        r"\w+",
+        text.lower(),
+    )
 
 
 class HybridSearchService:
@@ -25,33 +45,35 @@ class HybridSearchService:
             QdrantService()
         )
 
+    @staticmethod
     def keyword_score(
-        self,
         query: str,
         text: str,
     ):
+        """
+        Fraction of distinct query terms that appear in the text (0.0 - 1.0).
 
-        query_words = (
-            query.lower().split()
+        Kept on the same 0-1 scale as cosine similarity so neither signal
+        swamps the other when they are combined.
+        """
+
+        query_terms = set(
+            tokenize(query)
         )
 
-        text_words = (
-            text.lower().split()
+        if not query_terms:
+
+            return 0.0
+
+        text_terms = set(
+            tokenize(text)
         )
 
-        text_counter = Counter(
-            text_words
+        return (
+            len(query_terms & text_terms)
+            /
+            len(query_terms)
         )
-
-        score = 0
-
-        for word in query_words:
-
-            score += (
-                text_counter[word]
-            )
-
-        return score
 
     async def search(
         self,
@@ -66,6 +88,23 @@ class HybridSearchService:
             )[0]
         )
 
+        # Restrict to the session's documents inside Qdrant, so the
+        # candidate pool is never used up by other documents' chunks
+        query_filter = None
+
+        if document_ids:
+
+            query_filter = Filter(
+                must=[
+                    FieldCondition(
+                        key="document_id",
+                        match=MatchAny(
+                            any=list(document_ids)
+                        ),
+                    )
+                ]
+            )
+
         results = await (
             self.qdrant_service.client.query_points(
                 collection_name=(
@@ -74,7 +113,9 @@ class HybridSearchService:
                 query=(
                     embedding.tolist()
                 ),
+                query_filter=query_filter,
                 limit=limit * 3,
+                with_payload=True,
             )
         )
 
@@ -83,17 +124,6 @@ class HybridSearchService:
         for point in results.points:
 
             payload = point.payload
-
-            if document_ids:
-
-                if (
-                    payload.get(
-                        "document_id"
-                    )
-                    not in document_ids
-                ):
-
-                    continue
 
             text = payload.get(
                 "text",
@@ -112,15 +142,17 @@ class HybridSearchService:
             )
 
             final_score = (
-                (vector_score * 0.7)
+                (vector_score * VECTOR_WEIGHT)
                 +
-                (keyword_score * 0.3)
+                (keyword_score * KEYWORD_WEIGHT)
             )
 
             hybrid_results.append(
                 {
                     "text": text,
                     "score": final_score,
+                    "vector_score": vector_score,
+                    "keyword_score": keyword_score,
                     "payload": payload,
                 }
             )

@@ -54,6 +54,13 @@ class Settings(BaseSettings):
 
     algorithm: str = "HS256"
 
+    # Browser origins allowed to call the API
+    # (set CORS_ORIGINS as a JSON list in .env)
+    cors_origins: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+    ]
+
     access_token_expire_minutes: int = 30
 
     # Upload

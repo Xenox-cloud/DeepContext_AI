@@ -129,10 +129,10 @@ Uploaded documents are:
 
 The system combines:
 
-- vector similarity search
-- keyword frequency scoring
+- vector similarity search (cosine, filtered to the session's documents inside Qdrant)
+- keyword overlap scoring (share of query terms found in the chunk, 0–1)
 
-to improve retrieval robustness.
+as `0.7 × vector + 0.3 × keyword`, with both signals on the same 0–1 scale, to improve retrieval robustness.
 
 ## 3. Cross-Encoder Reranking
 
@@ -333,12 +333,15 @@ pip install -r requirements.txt
 
 # Environment Variables
 
-Create a `.env` file:
+Copy `.env.example` to `.env` and fill in your values:
 
 ```env
 GROQ_API_KEY=your_groq_api_key
-QDRANT_URL=http://localhost:6333
+SECRET_KEY=change-me
 DATABASE_URL=sqlite+aiosqlite:///./enterprise_nlp.db
+QDRANT_HOST=localhost
+QDRANT_PORT=6333
+CORS_ORIGINS=["http://localhost:5173"]
 ```
 
 ---
@@ -362,8 +365,19 @@ uvicorn app.main:app --reload
 Swagger Docs:
 
 ```text
-http://127.0.0.1:8000/docs
+http://127.0.0.1:8000/api/v1/docs
 ```
+
+---
+
+# Run Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+The tests replace the models, Qdrant and Groq with fakes, so they run in seconds. They cover hybrid scoring (keyword score bounded to 0–1, so repeated words can't outrank a strong semantic match), session filtering inside Qdrant, and reranking edge cases.
 
 ---
 

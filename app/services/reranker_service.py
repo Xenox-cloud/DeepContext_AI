@@ -2,14 +2,23 @@
 Reranker Service
 """
 
+from functools import lru_cache
+
 from sentence_transformers import (
     CrossEncoder
 )
 
 
-RERANK_MODEL = CrossEncoder(
-    "cross-encoder/ms-marco-MiniLM-L-6-v2"
-)
+RERANK_MODEL_NAME = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+
+@lru_cache(maxsize=1)
+def get_rerank_model():
+
+    # Loaded once, on first use
+    return CrossEncoder(
+        RERANK_MODEL_NAME
+    )
 
 
 class RerankerService:
@@ -17,7 +26,7 @@ class RerankerService:
     def __init__(self):
 
         self.model = (
-            RERANK_MODEL
+            get_rerank_model()
         )
 
     def rerank(
@@ -26,6 +35,10 @@ class RerankerService:
         documents: list[str],
         top_k: int = 5,
     ):
+
+        if not documents:
+
+            return []
 
         pairs = [
             [query, doc]

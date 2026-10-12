@@ -10,6 +10,7 @@ from qdrant_client import (
 
 from qdrant_client.models import (
     Distance,
+    PayloadSchemaType,
     VectorParams,
     PointStruct,
 )
@@ -54,6 +55,13 @@ class QdrantService:
                 size=dim,
                 distance=Distance.COSINE,
             ),
+        )
+
+        # Session-scoped search filters on document_id, so index that payload field
+        await self.client.create_payload_index(
+            collection_name=self.collection_name,
+            field_name="document_id",
+            field_schema=PayloadSchemaType.INTEGER,
         )
 
     async def upsert_points(
